@@ -1,0 +1,6 @@
+.stack-work/
+haskell-echo-bot.cabal
+conf/local.conf
+.vscode
+.history
+*~
