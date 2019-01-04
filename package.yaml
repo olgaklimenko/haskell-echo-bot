@@ -25,6 +25,8 @@ dependencies:
 - aeson
 - configurator
 - text
+- bytestring
+- data-default-class
 
 library:
   source-dirs: src
