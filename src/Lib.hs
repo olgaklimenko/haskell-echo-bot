@@ -15,7 +15,7 @@ getToken = do
     return (liftToken token)
 
 liftToken :: (Maybe String) -> Text
-liftToken (Just token) = pack token
+liftToken (Just token) = pack ("bot" ++ token)
 liftToken Nothing = error "Can't find Telegram botToken in conf"
 
 someFunc :: IO ()
