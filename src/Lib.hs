@@ -5,7 +5,7 @@ module Lib
 import qualified Data.Configurator as C
 import qualified Data.Text as T
 import Data.Text (Text, pack)
-import Telegram
+import Messengers.Telegram.Api as TelegramApi
 
 getToken :: IO Text
 getToken = do 
@@ -21,4 +21,4 @@ liftToken Nothing = error "Can't find Telegram botToken in conf"
 someFunc :: IO ()
 someFunc = do 
     token <- getToken
-    Telegram.getUpdates token
+    TelegramApi.getUpdates token
