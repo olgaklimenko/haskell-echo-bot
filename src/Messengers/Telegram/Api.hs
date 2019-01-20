@@ -24,7 +24,7 @@ getMessages offset = do
         where 
             updates = updateResponseResult updateResponse
 
-getUpdates :: Int -> IO (Either String (Either String UpdateResponse))
+getUpdates :: Int -> IO (Either String (Either String UpdateResponse)) -- TODO: WTF with types
 getUpdates offset = do
     token <- getToken
     let url = (https "api.telegram.org" /: token /: "getUpdates")
