@@ -1,7 +1,6 @@
 
 module Main where
-
-import Lib
+import qualified Messengers.Telegram.Api as TelegramApi
 
 main :: IO ()
-main = someFunc
+main = TelegramApi.startPolling
