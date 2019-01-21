@@ -53,7 +53,7 @@ instance FromJSON UpdateResponse where
         <$> v .: "ok"
         <*> v .: "result"
 
-data SendMessage = SendMessage {
+data SendMessageData = SendMessageData {
     sendMessageChatId :: Int,
     sendMessageText :: T.Text
     } deriving (Show, Eq, Generic)
@@ -63,5 +63,5 @@ data SendMessage = SendMessage {
 --         <$> v .: "chat_id"
 --         <*> v .: "text"
 
-instance ToJSON SendMessage where
-toJSON (SendMessage chatId text) = object ["chat_id" .= chatId, "text" .= text]
+instance ToJSON SendMessageData where
+toJSON (SendMessageData chatId text) = object ["chat_id" .= chatId, "text" .= text]
