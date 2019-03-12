@@ -71,7 +71,8 @@ messageHandler (Message chat msg) =
     msgForSend (Just m) = m
 
 repeatHandler :: Message -> IO LB.ByteString
-repeatHandler (Message chat msg) = sendMessage (chatId chat) msgForSend (Just keyboard)
+repeatHandler (Message chat msg) =
+  sendMessage (chatId chat) msgForSend (Just keyboard)
   where
     msgForSend = "Choose echo msg repeat times"
     keyboard =
@@ -86,4 +87,5 @@ repeatHandler (Message chat msg) = sendMessage (chatId chat) msgForSend (Just ke
         ]
 
 -- callbackQueryHandler :: CallbackQuery -> IO LB.ByteString
--- callbackQueryHandler (CallbackQuery chat msg)
+-- callbackQueryHandler (CallbackQuery qId qData qMessage) 
+      -- TODO: modify user state with value from qData/Message
