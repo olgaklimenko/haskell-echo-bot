@@ -4,24 +4,24 @@ import Control.Monad.State
 import Data.List
 
 data User = User
-  { chatId :: String
-  , repeats :: Integer
+  { uChatId :: Int
+  , repeats :: Int
   } deriving Show
 
 instance Eq User where
-  u1 == u2 = chatId u1 == chatId u2
+  u1 == u2 = uChatId u1 == uChatId u2
 
-type UsersMonad = State [(String, User)]
+type UsersMonad = State [(Int, User)]
 
-addUser :: String -> UsersMonad ()
+addUser :: Int -> UsersMonad ()
 addUser chatId = do
   users <- get
   put ((chatId, User chatId 1) : users)
 
-getUser :: String -> UsersMonad (Maybe User)
+getUser :: Int -> UsersMonad (Maybe User)
 getUser chatId = gets $ lookup chatId
   
-changeRepeats :: String -> Integer -> UsersMonad ()
+changeRepeats :: Int -> Int -> UsersMonad ()
 changeRepeats chatId repeats = do
   users <- get
   let user = lookup chatId users

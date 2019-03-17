@@ -34,19 +34,21 @@ data CallbackQuery = CallbackQuery
   { callbackQueryId :: String
   , callbackQueryData :: Maybe String
   , callbackQueryMessage :: Maybe Message
+  , callbackQueryInlineMessageId :: Maybe String
   } deriving (Show, Eq, Generic)
 
 instance FromJSON CallbackQuery where
   parseJSON (Object v) =
-    CallbackQuery <$> v .: "id" <*> v .:? "data" <*> v .:? "message"
+    CallbackQuery <$> v .: "id" <*> v .:? "data" <*> v .:? "message" <*> v.:? "inline_message_id"
 
 data Update = Update
   { updateUpdateId :: Int
   , updateMessage :: Maybe Message
+  , updateCallbackQuery :: Maybe CallbackQuery
   } deriving (Show, Eq, Generic)
 
 instance FromJSON Update where
-  parseJSON (Object v) = Update <$> v .: "update_id" <*> v .:? "message"
+  parseJSON (Object v) = Update <$> v .: "update_id" <*> v .:? "message" <*> v .:? "callback_query"
 
 data UpdateResponse = UpdateResponse
   { updateResponseOk :: Bool
@@ -61,10 +63,9 @@ data SendMessageData = SendMessageData
   , sendMessageText :: T.Text
   } deriving (Show, Eq, Generic)
 
-instance ToJSON SendMessageData
-
-toJSON SendMessageData {..} =
-  object ["chat_id" .= sendMessageChatId, "text" .= sendMessageText]
+instance ToJSON SendMessageData where
+  toJSON SendMessageData {..} =
+    object ["chat_id" .= sendMessageChatId, "text" .= sendMessageText]
 
 data InlineKeyboardButton = InlineKeyboardButton
   { inlineKeyboardButtonText :: String
@@ -83,13 +84,15 @@ instance ToJSON InlineKeyboard where
   toJSON (InlineKeyboard btns) = object ["inline_keyboard" .= btns]
 
 data SendMessageWithInlineKeyboardData = SendMessageWithInlineKeyboardData
-  { sendMessageWithInlineKeyboardDataText :: String
+  { sendMessageWithInlineKeyboardChatId :: Int
+  ,  sendMessageWithInlineKeyboardDataText :: String
   , sendMessageWithInlineKeyboardDataReplyMarkup :: InlineKeyboard
   }
 
 instance ToJSON SendMessageWithInlineKeyboardData where
   toJSON SendMessageWithInlineKeyboardData {..} =
     object
-      [ "text" .= sendMessageWithInlineKeyboardDataText
+      [ "chat_id" .= sendMessageWithInlineKeyboardChatId
+      ,  "text" .= sendMessageWithInlineKeyboardDataText
       , "reply_markup" .= sendMessageWithInlineKeyboardDataReplyMarkup
       ]
