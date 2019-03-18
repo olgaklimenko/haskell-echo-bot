@@ -2,6 +2,7 @@ module Users where
 
 import Control.Monad.State
 import Data.List
+import Data.Maybe (fromJust)
 
 data User = User
   { uChatId :: Int
@@ -11,17 +12,18 @@ data User = User
 instance Eq User where
   u1 == u2 = uChatId u1 == uChatId u2
 
-type UsersMonad = State [(Int, User)]
+type UsersMonad m = StateT [(Int, User)] m
 
-addUser :: Int -> UsersMonad ()
-addUser chatId = do
+createUser :: Monad m => Int -> UsersMonad m (Maybe User)
+createUser chatId = do
   users <- get
   put ((chatId, User chatId 1) : users)
+  gets $ lookup chatId
 
-getUser :: Int -> UsersMonad (Maybe User)
+getUser :: Monad m =>  Int -> UsersMonad m (Maybe User)
 getUser chatId = gets $ lookup chatId
   
-changeRepeats :: Int -> Int -> UsersMonad ()
+changeRepeats :: Monad m => Int -> Int -> UsersMonad m ()
 changeRepeats chatId repeats = do
   users <- get
   let user = lookup chatId users
@@ -33,6 +35,12 @@ changeRepeats chatId repeats = do
           newState = l1 ++ l2
        in put ((chatId, User chatId repeats) : newState)
 
+getOrCreateUser :: Monad m => Int -> UsersMonad m (Maybe User)
+getOrCreateUser chatId = do
+  mUser <- getUser chatId
+  case mUser of
+    Just u -> pure mUser
+    Nothing -> createUser chatId 
 
 {--
 проверка
