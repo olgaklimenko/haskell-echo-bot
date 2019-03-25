@@ -5,19 +5,18 @@ module Messengers.Telegram.Api where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Aeson
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import Data.Maybe (fromJust, fromMaybe, maybe)
 import qualified Data.Text as T
 import Debug.Trace
 import Ext.Data.List
 import Helpers (intToText)
+import Logger
 import Messengers.Telegram.Helpers
 import Messengers.Telegram.Serializers
 import Network.HTTP.Req
 import Requests (get, post)
 import Users
-import Logger
 
 startPolling :: UsersMonad IO ()
 startPolling = getMessages 0 >> pure ()
@@ -29,7 +28,7 @@ getMessages offset = do
   where
     left errorMsg = getMessages offset
     right updateResponse =
-      mapM_ handleUpdate updates >> getMessages (getNextOffset $ updates)
+      mapM_ handleUpdate updates >> getMessages (getNextOffset updates)
       where
         updates = updateResponseResult updateResponse
 
@@ -106,8 +105,7 @@ messageHandler (Message chat msg) = do
   let cId = chatId chat
   mUser <- getOrCreateUser cId
   let r = repeats (fromJust mUser) -- TODO : exception
-  liftIO $
-    sendMsgNtimes r cId (fromMaybe "Received empty message" msg)
+  liftIO $ sendMsgNtimes r cId (fromMaybe "Received empty message" msg)
 
 sendMsgNtimes :: Int -> Int -> T.Text -> IO LB.ByteString
 sendMsgNtimes 1 cId msg = sendMessage cId msg Nothing
@@ -130,7 +128,6 @@ repeatHandler (Message chat msg) = do
         , [ InlineKeyboardButton "3" "repeat3"
           , InlineKeyboardButton "4" "repeat4"
           ]
-          
         , [InlineKeyboardButton "5" "repeat5"]
         ]
 
