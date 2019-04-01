@@ -13,9 +13,9 @@ import Network.HTTP.Req
 import Requests (get, post)
 import Users
 
-token = "xoxb-514336897139-580029414213-1sx5bYfa6clKyyjBkczp4i4c" :: T.Text
+token = "" :: T.Text
 
-channel = "DH1H3QVSP" :: T.Text
+channel = "" :: T.Text
 
 startPolling :: IO ()
 startPolling = getMessages "" >> pure ()
@@ -60,7 +60,7 @@ sendMessage chatId text = do
   let headers =
         header
           "Authorization"
-          "Bearer xoxb-514336897139-580029414213-1sx5bYfa6clKyyjBkczp4i4c" <>
+          "Bearer " <>
         header "Content-type" "application/json" -- TODO: use token form config
       body = SlackSendMessageData chatId text
   rsp <- post url body headers
