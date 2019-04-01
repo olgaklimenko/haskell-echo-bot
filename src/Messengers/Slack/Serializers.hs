@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Messengers.Slack.Serializers where
 
@@ -23,6 +24,16 @@ data SlackUpdateResponse = UpdateResponseSlack
 
 instance FromJSON SlackUpdateResponse where
   parseJSON (Object v) = UpdateResponseSlack <$> v .: "ok" <*> v .: "messages"
+
+data SlackSendMessageData = SlackSendMessageData {
+  ssmdChannel :: T.Text,
+  ssmdText :: T.Text
+}
+
+instance ToJSON SlackSendMessageData where
+  toJSON SlackSendMessageData {..} =
+    object ["channel" .= ssmdChannel, "text" .= ssmdText]
+
 --   {
 --             "type": "message",
 --             "user": "U012AB3CDE",

@@ -6,16 +6,16 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as LB
 import Data.Maybe (fromJust, fromMaybe, maybe)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import Ext.Data.List
-import Network.HTTP.Req
-
 import Messengers.Slack.Serializers
+import Network.HTTP.Req
 import Requests (get, post)
 import Users
 
-token = "" :: T.Text
+token = "xoxb-514336897139-580029414213-1sx5bYfa6clKyyjBkczp4i4c" :: T.Text
 
-channel = "" :: T.Text
+channel = "DH1H3QVSP" :: T.Text
 
 startPolling :: IO ()
 startPolling = getMessages "" >> pure ()
@@ -45,7 +45,7 @@ handleMessage msg = do
 getUpdates :: T.Text -> IO (Either String SlackUpdateResponse)
 getUpdates timestamp = do
   let url = https "slack.com" /: "api" /: "conversations.history"
-  let options =
+      options =
         "token" =: token <> ("channel" =: channel) <> ("oldest" =: timestamp)
   rsp <- get url options
   let r = either left right rsp
@@ -54,8 +54,15 @@ getUpdates timestamp = do
     left errorMsg = Left $ show errorMsg
     right = eitherDecode . responseBody
 
-
-sendMessage :: T.Text -> T.Text -> IO (Either String LB.ByteString)
+sendMessage :: T.Text -> T.Text -> IO LB.ByteString
 sendMessage chatId text = do
   let url = https "slack.com" /: "api" /: "chat.postMessage"
-  pure undefined
+  let headers =
+        header
+          "Authorization"
+          "Bearer xoxb-514336897139-580029414213-1sx5bYfa6clKyyjBkczp4i4c" <>
+        header "Content-type" "application/json" -- TODO: use token form config
+      body = SlackSendMessageData chatId text
+  rsp <- post url body headers
+  pure $ responseBody rsp
+

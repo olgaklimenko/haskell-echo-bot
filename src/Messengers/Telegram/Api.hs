@@ -84,7 +84,7 @@ sendMessage chatId text keyboard = do
   let reqBody = SendMessageData chatId text
   rsp <-
     case keyboard of
-      Nothing -> post url (SendMessageData chatId text)
+      Nothing -> post url (SendMessageData chatId text) mempty
       (Just k) ->
         post
           url
@@ -92,6 +92,7 @@ sendMessage chatId text keyboard = do
              chatId
              "Choose echo msg repeat times"
              k)
+          mempty
   pure $ responseBody rsp
 
 helpHandler :: HandlerMonad
