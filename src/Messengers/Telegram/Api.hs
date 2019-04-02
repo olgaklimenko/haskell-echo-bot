@@ -2,8 +2,11 @@
 
 module Messengers.Telegram.Api where
 
+import BotMonad
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader
+import Control.Monad.Trans.Class
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LB
 import Data.Maybe (fromJust, fromMaybe, maybe)
@@ -15,13 +18,13 @@ import Logger
 import Messengers.Telegram.Helpers
 import Messengers.Telegram.Serializers
 import Network.HTTP.Req
-import Requests (get, post)
+import qualified Requests as R
 import Users
 
-startPolling :: UsersMonad IO ()
+startPolling :: BotMonad IO ()
 startPolling = getMessages 0 >> pure ()
 
-getMessages :: Int -> UsersMonad IO Int
+getMessages :: Int -> BotMonad IO Int
 getMessages offset = do
   rsp <- liftIO $ getUpdates offset
   either left right rsp
@@ -35,10 +38,9 @@ getMessages offset = do
 getUpdates :: Int -> IO (Either String TelegramUpdateResponse)
 getUpdates offset = do
   token <- getToken
-  
   let url = https "api.telegram.org" /: token /: "getUpdates"
   let options = "offset" =: offset
-  rsp <- get url options
+  rsp <- R.get url options
   pure $ either left right rsp
   where
     left errorMsg = Left $ show errorMsg
@@ -49,7 +51,7 @@ getNextOffset xs = list 0 ((+ 1) . last) $ fmap tuUpdateId xs
 
 type Handler = TelegramMessage -> IO LB.ByteString
 
-type HandlerMonad = TelegramMessage -> UsersMonad IO LB.ByteString
+type HandlerMonad = TelegramMessage -> BotMonad IO LB.ByteString
 
 routeMessage :: TelegramMessage -> Maybe HandlerMonad
 routeMessage msg =
@@ -64,7 +66,7 @@ routeCallbackQuery cQ =
     Just cqData ->
       Just (fromMaybe (callbackQueryHandler 1) (lookup cqData callbackQueries))
 
-handleUpdate :: TelegramUpdate -> UsersMonad IO LB.ByteString
+handleUpdate :: TelegramUpdate -> BotMonad IO LB.ByteString
 handleUpdate upd = do
   liftIO $ print "Handle update: " >> print upd
   case tuMessage upd of
@@ -85,9 +87,9 @@ sendMessage chatId text keyboard = do
   let reqBody = TelegramSendMessageData chatId text
   rsp <-
     case keyboard of
-      Nothing -> post url (TelegramSendMessageData chatId text) mempty
+      Nothing -> R.post url (TelegramSendMessageData chatId text) mempty
       (Just k) ->
-        post
+        R.post
           url
           (TelegramMessageInlineKeyboardData
              chatId
@@ -96,11 +98,11 @@ sendMessage chatId text keyboard = do
           mempty
   pure $ responseBody rsp
 
-helpHandler :: HandlerMonad
+helpHandler :: HandlerMonad -- (ReaderT BotEnv) (UsersMonad  IO) LB.ByteString
 helpHandler (TelegramMessage chat msg) = do
   let cId = tcId chat
   getOrCreateUser cId
-  liftIO $ sendMessage cId "Try /repeat command." Nothing -- TODO: вынести текст в конфиг
+  liftIO (sendMessage cId "Try /repeat command." Nothing) -- TODO: вынести текст в конфиг
 
 messageHandler :: HandlerMonad
 messageHandler (TelegramMessage chat msg) = do

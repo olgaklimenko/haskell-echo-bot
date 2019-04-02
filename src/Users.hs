@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Users where
 
 import Control.Monad.State
@@ -7,25 +9,25 @@ import Data.Maybe (fromJust)
 data User = User
   { uChatId :: Int
   , repeats :: Int
-  } deriving Show
+  } deriving (Show)
 
 instance Eq User where
   u1 == u2 = uChatId u1 == uChatId u2
 
-type Users = [(Int, User)] 
+type Users = [(Int, User)]
 
 type UsersMonad m = StateT Users m
 
-createUser :: Monad m => Int -> UsersMonad m (Maybe User)
+createUser :: (Monad m, MonadState Users m) => Int -> m (Maybe User)
 createUser chatId = do
   users <- get
   put ((chatId, User chatId 1) : users)
   gets $ lookup chatId
 
-getUser :: Monad m =>  Int -> UsersMonad m (Maybe User)
+getUser :: (Monad m, MonadState Users m) => Int -> m (Maybe User)
 getUser chatId = gets $ lookup chatId
-  
-changeRepeats :: Monad m => Int -> Int -> UsersMonad m ()
+
+changeRepeats :: (Monad m, MonadState Users m) => Int -> Int -> m ()
 changeRepeats chatId repeats = do
   users <- get
   let user = lookup chatId users
@@ -37,13 +39,12 @@ changeRepeats chatId repeats = do
           newState = l1 ++ l2
        in put ((chatId, User chatId repeats) : newState)
 
-getOrCreateUser :: Monad m => Int -> UsersMonad m (Maybe User)
+getOrCreateUser :: (Monad m, MonadState Users m) => Int -> m (Maybe User)
 getOrCreateUser chatId = do
   mUser <- getUser chatId
   case mUser of
     Just u -> pure mUser
-    Nothing -> createUser chatId 
-
+    Nothing -> createUser chatId
 {--
 проверка
 import Users

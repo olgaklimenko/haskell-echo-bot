@@ -11,5 +11,6 @@ import Config (loadConfig)
 main :: IO ()
 -- main = runStateT TelegramApi.startPolling [] >> return ()
 main = SlackApi.startPolling >> return ()
--- main = runReaderT conf (runStateT TelegramApi.startPolling []) >> return ()
+-- main = runReaderT conf $ runStateT TelegramApi.startPolling [] >> return ()
 --     where conf = pure loadConfig -- TODO: use it
+-- main = runBotMonad 
