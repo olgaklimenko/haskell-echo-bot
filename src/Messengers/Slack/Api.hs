@@ -12,6 +12,7 @@ import Messengers.Slack.Serializers
 import Network.HTTP.Req
 import Requests (get, post)
 import Users
+import BotMonad
 
 token = "" :: T.Text
 

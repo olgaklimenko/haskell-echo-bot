@@ -12,7 +12,9 @@ data User = User
 instance Eq User where
   u1 == u2 = uChatId u1 == uChatId u2
 
-type UsersMonad m = StateT [(Int, User)] m
+type Users = [(Int, User)] 
+
+type UsersMonad m = StateT Users m
 
 createUser :: Monad m => Int -> UsersMonad m (Maybe User)
 createUser chatId = do

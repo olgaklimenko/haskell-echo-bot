@@ -8,91 +8,91 @@ import Data.Aeson
 import qualified Data.Text as T
 import GHC.Generics
 
-data Chat = Chat
-  { chatId :: Int
-  , chatFirstName :: Maybe T.Text
-  , chatLastName :: Maybe T.Text
-  , chatUsername :: Maybe T.Text
-  , chatType :: T.Text
+data TelegramChat = TelegramChat
+  { tcId :: Int
+  , tcFirstName :: Maybe T.Text
+  , tcLastName :: Maybe T.Text
+  , tcUsername :: Maybe T.Text
+  , tcType :: T.Text
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Chat where
+instance FromJSON TelegramChat where
   parseJSON (Object v) =
-    Chat <$> v .: "id" <*> v .:? "first_name" <*> v .:? "last_name" <*>
+    TelegramChat <$> v .: "id" <*> v .:? "first_name" <*> v .:? "last_name" <*>
     v .:? "username" <*>
     v .: "type"
 
-data Message = Message
-  { messageChat :: Chat
-  , messageText :: Maybe T.Text
+data TelegramMessage = TelegramMessage
+  { tmChat :: TelegramChat
+  , tmText :: Maybe T.Text
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Message where
-  parseJSON (Object v) = Message <$> v .: "chat" <*> v .:? "text"
+instance FromJSON TelegramMessage where
+  parseJSON (Object v) = TelegramMessage <$> v .: "chat" <*> v .:? "text"
 
-data CallbackQuery = CallbackQuery
-  { callbackQueryId :: String
-  , callbackQueryData :: Maybe String
-  , callbackQueryMessage :: Maybe Message
-  , callbackQueryInlineMessageId :: Maybe String
+data TelegramCallbackQuery = TelegramCallbackQuery
+  { tcqId :: String
+  , tcqData :: Maybe String
+  , tcqMessage :: Maybe TelegramMessage
+  , tcqInlineMessageId :: Maybe String
   } deriving (Show, Eq, Generic)
 
-instance FromJSON CallbackQuery where
+instance FromJSON TelegramCallbackQuery where
   parseJSON (Object v) =
-    CallbackQuery <$> v .: "id" <*> v .:? "data" <*> v .:? "message" <*> v.:? "inline_message_id"
+    TelegramCallbackQuery <$> v .: "id" <*> v .:? "data" <*> v .:? "message" <*> v.:? "inline_message_id"
 
-data Update = Update
-  { updateUpdateId :: Int
-  , updateMessage :: Maybe Message
-  , updateCallbackQuery :: Maybe CallbackQuery
+data TelegramUpdate = TelegramUpdate
+  { tuUpdateId :: Int
+  , tuMessage :: Maybe TelegramMessage
+  , tuCallbackQuery :: Maybe TelegramCallbackQuery
   } deriving (Show, Eq, Generic)
 
-instance FromJSON Update where
-  parseJSON (Object v) = Update <$> v .: "update_id" <*> v .:? "message" <*> v .:? "callback_query"
+instance FromJSON TelegramUpdate where
+  parseJSON (Object v) = TelegramUpdate <$> v .: "update_id" <*> v .:? "message" <*> v .:? "callback_query"
 
-data UpdateResponse = UpdateResponse
-  { updateResponseOk :: Bool
-  , updateResponseResult :: [Update]
+data TelegramUpdateResponse = TelegramUpdateResponse
+  { tuResponseOk :: Bool
+  , tuResponseResult :: [TelegramUpdate]
   } deriving (Show, Eq, Generic)
 
-instance FromJSON UpdateResponse where
-  parseJSON (Object v) = UpdateResponse <$> v .: "ok" <*> v .: "result"
+instance FromJSON TelegramUpdateResponse where
+  parseJSON (Object v) = TelegramUpdateResponse <$> v .: "ok" <*> v .: "result"
 
-data SendMessageData = SendMessageData
-  { sendMessageChatId :: Int
-  , sendMessageText :: T.Text
+data TelegramSendMessageData = TelegramSendMessageData
+  { tsmdChatId :: Int
+  , tsmdText :: T.Text
   } deriving (Show, Eq, Generic)
 
-instance ToJSON SendMessageData where
-  toJSON SendMessageData {..} =
-    object ["chat_id" .= sendMessageChatId, "text" .= sendMessageText]
+instance ToJSON TelegramSendMessageData where
+  toJSON TelegramSendMessageData {..} =
+    object ["chat_id" .= tsmdChatId, "text" .= tsmdText]
 
-data InlineKeyboardButton = InlineKeyboardButton
-  { inlineKeyboardButtonText :: String
-  , inlineKeyboardButtonCallbackData :: String
+data TelegramInlineKeyboardButton = TelegramInlineKeyboardButton
+  { tikbText :: String
+  , tikbCallbackData :: String
   } deriving (Show, Eq, Generic)
 
-instance ToJSON InlineKeyboardButton where
-  toJSON (InlineKeyboardButton btnText btnData) =
+instance ToJSON TelegramInlineKeyboardButton where
+  toJSON (TelegramInlineKeyboardButton btnText btnData) =
     object ["text" .= btnText, "callback_data" .= btnData]
 
-newtype InlineKeyboard = InlineKeyboard
-  { inlineKeyboardButtons :: [[InlineKeyboardButton]]
+newtype TelegramInlineKeyboard = TelegramInlineKeyboard
+  { inlineKeyboardButtons :: [[TelegramInlineKeyboardButton]]
   }
 
-instance ToJSON InlineKeyboard where
-  toJSON (InlineKeyboard btns) = object ["inline_keyboard" .= btns]
+instance ToJSON TelegramInlineKeyboard where
+  toJSON (TelegramInlineKeyboard btns) = object ["inline_keyboard" .= btns]
 
-data SendMessageWithInlineKeyboardData = SendMessageWithInlineKeyboardData
-  { sendMessageWithInlineKeyboardChatId :: Int
-  ,  sendMessageWithInlineKeyboardDataText :: String
-  , sendMessageWithInlineKeyboardDataReplyMarkup :: InlineKeyboard
+data TelegramMessageInlineKeyboardData = TelegramMessageInlineKeyboardData
+  { tmikdChatId :: Int
+  , tmikdDataText :: String
+  , tmikdDataReplyMarkup :: TelegramInlineKeyboard
   }
 
-instance ToJSON SendMessageWithInlineKeyboardData where
-  toJSON SendMessageWithInlineKeyboardData {..} =
+instance ToJSON TelegramMessageInlineKeyboardData where
+  toJSON TelegramMessageInlineKeyboardData {..} =
     object
-      [ "chat_id" .= sendMessageWithInlineKeyboardChatId
-      ,  "text" .= sendMessageWithInlineKeyboardDataText
-      , "reply_markup" .= sendMessageWithInlineKeyboardDataReplyMarkup
+      [ "chat_id" .= tmikdChatId
+      ,  "text" .= tmikdDataText
+      , "reply_markup" .= tmikdDataReplyMarkup
       ]

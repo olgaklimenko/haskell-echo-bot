@@ -30,11 +30,12 @@ getMessages offset = do
     right updateResponse =
       mapM_ handleUpdate updates >> getMessages (getNextOffset updates)
       where
-        updates = updateResponseResult updateResponse
+        updates = tuResponseResult updateResponse
 
-getUpdates :: Int -> IO (Either String UpdateResponse)
+getUpdates :: Int -> IO (Either String TelegramUpdateResponse)
 getUpdates offset = do
   token <- getToken
+  
   let url = https "api.telegram.org" /: token /: "getUpdates"
   let options = "offset" =: offset
   rsp <- get url options
@@ -43,52 +44,52 @@ getUpdates offset = do
     left errorMsg = Left $ show errorMsg
     right = eitherDecode . responseBody
 
-getNextOffset :: [Update] -> Int
-getNextOffset xs = list 0 ((+ 1) . last) $ fmap updateUpdateId xs
+getNextOffset :: [TelegramUpdate] -> Int
+getNextOffset xs = list 0 ((+ 1) . last) $ fmap tuUpdateId xs
 
-type Handler = Message -> IO LB.ByteString
+type Handler = TelegramMessage -> IO LB.ByteString
 
-type HandlerMonad = Message -> UsersMonad IO LB.ByteString
+type HandlerMonad = TelegramMessage -> UsersMonad IO LB.ByteString
 
-routeMessage :: Message -> Maybe HandlerMonad
+routeMessage :: TelegramMessage -> Maybe HandlerMonad
 routeMessage msg =
-  case messageText msg of
+  case tmText msg of
     Just text -> Just (fromMaybe messageHandler (lookup text commands))
     Nothing -> Nothing
 
-routeCallbackQuery :: CallbackQuery -> Maybe HandlerMonad
+routeCallbackQuery :: TelegramCallbackQuery -> Maybe HandlerMonad
 routeCallbackQuery cQ =
-  case callbackQueryData cQ of
+  case tcqData cQ of
     Nothing -> Nothing
     Just cqData ->
       Just (fromMaybe (callbackQueryHandler 1) (lookup cqData callbackQueries))
 
-handleUpdate :: Update -> UsersMonad IO LB.ByteString
+handleUpdate :: TelegramUpdate -> UsersMonad IO LB.ByteString
 handleUpdate upd = do
   liftIO $ print "Handle update: " >> print upd
-  case updateMessage upd of
+  case tuMessage upd of
     Just m -> (fromJust $ routeMessage m) m -- TODO: handle exception
     Nothing ->
-      let cQuery = updateCallbackQuery upd
+      let cQuery = tuCallbackQuery upd
        in case cQuery of
             Nothing -> undefined -- TODO: No handler error
             Just cQ ->
               let handler = fromJust $ routeCallbackQuery cQ -- TODO: handle exception
-                  msg = fromJust $ callbackQueryMessage cQ
+                  msg = fromJust $ tcqMessage cQ
                in handler msg
 
-sendMessage :: Int -> T.Text -> Maybe InlineKeyboard -> IO LB.ByteString
+sendMessage :: Int -> T.Text -> Maybe TelegramInlineKeyboard -> IO LB.ByteString
 sendMessage chatId text keyboard = do
   token <- getToken
   let url = https "api.telegram.org" /: token /: "sendMessage"
-  let reqBody = SendMessageData chatId text
+  let reqBody = TelegramSendMessageData chatId text
   rsp <-
     case keyboard of
-      Nothing -> post url (SendMessageData chatId text) mempty
+      Nothing -> post url (TelegramSendMessageData chatId text) mempty
       (Just k) ->
         post
           url
-          (SendMessageWithInlineKeyboardData
+          (TelegramMessageInlineKeyboardData
              chatId
              "Choose echo msg repeat times"
              k)
@@ -96,14 +97,14 @@ sendMessage chatId text keyboard = do
   pure $ responseBody rsp
 
 helpHandler :: HandlerMonad
-helpHandler (Message chat msg) = do
-  let cId = chatId chat
+helpHandler (TelegramMessage chat msg) = do
+  let cId = tcId chat
   getOrCreateUser cId
   liftIO $ sendMessage cId "Try /repeat command." Nothing -- TODO: вынести текст в конфиг
 
 messageHandler :: HandlerMonad
-messageHandler (Message chat msg) = do
-  let cId = chatId chat
+messageHandler (TelegramMessage chat msg) = do
+  let cId = tcId chat
   mUser <- getOrCreateUser cId
   let r = repeats (fromJust mUser) -- TODO : exception
   liftIO $ sendMsgNtimes r cId (fromMaybe "Received empty message" msg)
@@ -115,26 +116,26 @@ sendMsgNtimes n cId msg = do
   sendMsgNtimes (n - 1) cId msg
 
 repeatHandler :: HandlerMonad
-repeatHandler (Message chat msg) = do
-  let cId = chatId chat
+repeatHandler (TelegramMessage chat msg) = do
+  let cId = tcId chat
   getOrCreateUser cId
   liftIO $ sendMessage cId msgForSend (Just keyboard)
   where
     msgForSend = "Choose echo msg repeat times"
     keyboard =
-      InlineKeyboard
-        [ [ InlineKeyboardButton "1" "repeat1"
-          , InlineKeyboardButton "2" "repeat2"
+      TelegramInlineKeyboard
+        [ [ TelegramInlineKeyboardButton "1" "repeat1"
+          , TelegramInlineKeyboardButton "2" "repeat2"
           ]
-        , [ InlineKeyboardButton "3" "repeat3"
-          , InlineKeyboardButton "4" "repeat4"
+        , [ TelegramInlineKeyboardButton "3" "repeat3"
+          , TelegramInlineKeyboardButton "4" "repeat4"
           ]
-        , [InlineKeyboardButton "5" "repeat5"]
+        , [TelegramInlineKeyboardButton "5" "repeat5"]
         ]
 
 callbackQueryHandler :: Int -> HandlerMonad
-callbackQueryHandler n (Message chat msg) = do
-  let cId = chatId chat
+callbackQueryHandler n (TelegramMessage chat msg) = do
+  let cId = tcId chat
   getOrCreateUser cId
   changeRepeats cId n
   liftIO $ sendMessage cId ("repeats: " <> intToText n) Nothing
