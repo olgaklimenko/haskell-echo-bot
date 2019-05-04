@@ -3,19 +3,19 @@
 module Messengers.Telegram.Api where
 
 import BotMonad
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Reader
-import Control.Monad.Trans.Class
-import Data.Aeson
+import Control.Exception (throw)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Reader (asks)
+import Data.Aeson (eitherDecode)
 import qualified Data.ByteString.Lazy as LB
+import qualified Data.Configurator as C
+import qualified Data.Configurator.Types as C
 import Data.Maybe (fromJust, fromMaybe, maybe)
 import qualified Data.Text as T
-import Debug.Trace
-import Ext.Data.List
+import Exceptions (BotConfigException(..))
+import Ext.Data.List (list)
 import Helpers (intToText)
-import Logger
-import Messengers.Telegram.Helpers
+import Logger (logDebug)
 import Messengers.Telegram.Serializers
 import Network.HTTP.Req
 import qualified Requests as R
@@ -26,7 +26,7 @@ startPolling = getMessages 0 >> pure ()
 
 getMessages :: Int -> BotMonad IO Int
 getMessages offset = do
-  rsp <- liftIO $ getUpdates offset
+  rsp <- getUpdates offset
   either left right rsp
   where
     left errorMsg = getMessages offset
@@ -35,12 +35,13 @@ getMessages offset = do
       where
         updates = tuResponseResult updateResponse
 
-getUpdates :: Int -> IO (Either String TelegramUpdateResponse)
+getUpdates :: Int -> BotMonad IO (Either String TelegramUpdateResponse)
 getUpdates offset = do
-  token <- getToken
+  conf <- asks heConfig
+  token <- liftIO $ getTelegramToken conf
   let url = https "api.telegram.org" /: token /: "getUpdates"
   let options = "offset" =: offset
-  rsp <- R.get url options
+  rsp <- liftIO $ R.get url options
   pure $ either left right rsp
   where
     left errorMsg = Left $ show errorMsg
@@ -80,15 +81,19 @@ handleUpdate upd = do
                   msg = fromJust $ tcqMessage cQ
                in handler msg
 
-sendMessage :: Int -> T.Text -> Maybe TelegramInlineKeyboard -> IO LB.ByteString
+sendMessage ::
+     Int -> T.Text -> Maybe TelegramInlineKeyboard -> BotMonad IO LB.ByteString
 sendMessage chatId text keyboard = do
-  token <- getToken
+  conf <- asks heConfig
+  token <- liftIO $ getTelegramToken conf
   let url = https "api.telegram.org" /: token /: "sendMessage"
   let reqBody = TelegramSendMessageData chatId text
   rsp <-
     case keyboard of
-      Nothing -> R.post url (TelegramSendMessageData chatId text) mempty
+      Nothing ->
+        liftIO $ R.post url (TelegramSendMessageData chatId text) mempty
       (Just k) ->
+        liftIO $
         R.post
           url
           (TelegramMessageInlineKeyboardData
@@ -102,16 +107,16 @@ helpHandler :: HandlerMonad -- (ReaderT BotEnv) (UsersMonad  IO) LB.ByteString
 helpHandler (TelegramMessage chat msg) = do
   let cId = tcId chat
   getOrCreateUser cId
-  liftIO (sendMessage cId "Try /repeat command." Nothing) -- TODO: вынести текст в конфиг
+  sendMessage cId "Try /repeat command." Nothing -- TODO: вынести текст в конфиг
 
 messageHandler :: HandlerMonad
 messageHandler (TelegramMessage chat msg) = do
   let cId = tcId chat
   mUser <- getOrCreateUser cId
   let r = repeats (fromJust mUser) -- TODO : exception
-  liftIO $ sendMsgNtimes r cId (fromMaybe "Received empty message" msg)
+  sendMsgNtimes r cId (fromMaybe "Received empty message" msg)
 
-sendMsgNtimes :: Int -> Int -> T.Text -> IO LB.ByteString
+sendMsgNtimes :: Int -> Int -> T.Text -> BotMonad IO LB.ByteString
 sendMsgNtimes 1 cId msg = sendMessage cId msg Nothing
 sendMsgNtimes n cId msg = do
   sendMessage cId msg Nothing
@@ -121,7 +126,7 @@ repeatHandler :: HandlerMonad
 repeatHandler (TelegramMessage chat msg) = do
   let cId = tcId chat
   getOrCreateUser cId
-  liftIO $ sendMessage cId msgForSend (Just keyboard)
+  sendMessage cId msgForSend (Just keyboard)
   where
     msgForSend = "Choose echo msg repeat times"
     keyboard =
@@ -140,7 +145,7 @@ callbackQueryHandler n (TelegramMessage chat msg) = do
   let cId = tcId chat
   getOrCreateUser cId
   changeRepeats cId n
-  liftIO $ sendMessage cId ("repeats: " <> intToText n) Nothing
+  sendMessage cId ("repeats: " <> intToText n) Nothing
 
 commands = [("/help", helpHandler), ("/repeat", repeatHandler)]
 
@@ -151,3 +156,10 @@ callbackQueries =
   , ("repeat4", callbackQueryHandler 4)
   , ("repeat5", callbackQueryHandler 5)
   ]
+
+getTelegramToken :: C.Config -> IO T.Text
+getTelegramToken conf = do
+  token <- C.lookup conf "telegram.botToken"
+  case token of
+    Nothing -> throw $ NoTokenException "Telegram"
+    Just token -> pure ("bot" <> token)

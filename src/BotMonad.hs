@@ -8,10 +8,11 @@ import Control.Monad.State
 import Control.Monad.Trans.Class
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Configurator.Types as C
-import Users (User, Users, UsersMonad)
+import Users
 
 newtype BotEnv = BotEnv
-  { heConfig :: C.Config
+  { heConfig
+ :: C.Config
   }
 
 newtype BotMonad m a = BotMonad
@@ -24,10 +25,7 @@ newtype BotMonad m a = BotMonad
              , MonadState Users
              )
 
--- instance MonadTrans BotMonad where
-  --lift :: Monad m => m a -> t m a 
-  -- ReaderT BotEnv (UsersMonad m) (ReaderT r0 m0 a0)
-  -- Monad m => m a -> BotMonad m a
-  -- lift =  (ReaderT BotEnv) 
-
 type Handler = BotMonad IO LB.ByteString
+
+runIOBotMonad :: BotMonad IO a -> BotEnv -> Users -> IO (a, Users)
+runIOBotMonad (BotMonad m) env state = runStateT (runReaderT m env) []
