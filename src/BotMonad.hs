@@ -8,11 +8,12 @@ import Control.Monad.State
 import Control.Monad.Trans.Class
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Configurator.Types as C
+import qualified Data.Text as T
 import Users
 
-newtype BotEnv = BotEnv
-  { heConfig
- :: C.Config
+data BotEnv = BotEnv
+  { beToken :: T.Text
+  , beChannel :: Maybe T.Text
   }
 
 newtype BotMonad m a = BotMonad

@@ -20,6 +20,7 @@ import Messengers.Slack.Serializers
 import Network.HTTP.Req
 import Requests (get, post)
 import Users
+import Config (loadConfig, getConf)
 
 startPolling :: BotMonad IO ()
 startPolling = getMessages "" >> pure ()
@@ -48,9 +49,8 @@ handleMessage msg = do
 
 getUpdates :: T.Text -> BotMonad IO (Either String SlackUpdateResponse)
 getUpdates timestamp = do
-  conf <- asks heConfig
-  token <- liftIO $ getSlackToken conf
-  channel <- liftIO $ getSlackChannel conf
+  token <- asks beToken
+  channel <- fromMaybe (throw $ NoChannelException "Slack") <$> asks beChannel
   let url = https "slack.com" /: "api" /: "conversations.history"
       options =
         "token" =: token <> ("channel" =: channel) <> ("oldest" =: timestamp)
@@ -71,16 +71,9 @@ sendMessage chatId text = do
   rsp <- post url body headers
   pure $ responseBody rsp
 
-getSlackToken :: C.Config -> IO T.Text
-getSlackToken conf = do
-  token <- C.lookup conf "slack.botUserToken"
-  case token of
-    Nothing -> throw $ NoTokenException "Slack"
-    Just token -> pure token
-
-getSlackChannel :: C.Config -> IO T.Text
-getSlackChannel conf = do
-  channel <- C.lookup conf "slack.channel"
-  case channel of
-    Nothing -> throw $ NoChannelException "Slack"
-    Just channel -> pure channel
+slackEnv :: IO BotEnv
+slackEnv = do
+    conf <- loadConfig
+    slToken <- getConf conf "slack.token"
+    slChannel <- getConf conf "slack.channel"
+    pure $ BotEnv {beToken = slToken, beChannel = Just slChannel}

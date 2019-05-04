@@ -20,6 +20,7 @@ import Messengers.Telegram.Serializers
 import Network.HTTP.Req
 import qualified Requests as R
 import Users
+import Config (loadConfig, getConf)
 
 startPolling :: BotMonad IO ()
 startPolling = getMessages 0 >> pure ()
@@ -37,8 +38,7 @@ getMessages offset = do
 
 getUpdates :: Int -> BotMonad IO (Either String TelegramUpdateResponse)
 getUpdates offset = do
-  conf <- asks heConfig
-  token <- liftIO $ getTelegramToken conf
+  token <- asks beToken
   let url = https "api.telegram.org" /: token /: "getUpdates"
   let options = "offset" =: offset
   rsp <- liftIO $ R.get url options
@@ -84,8 +84,7 @@ handleUpdate upd = do
 sendMessage ::
      Int -> T.Text -> Maybe TelegramInlineKeyboard -> BotMonad IO LB.ByteString
 sendMessage chatId text keyboard = do
-  conf <- asks heConfig
-  token <- liftIO $ getTelegramToken conf
+  token <- asks beToken
   let url = https "api.telegram.org" /: token /: "sendMessage"
   let reqBody = TelegramSendMessageData chatId text
   rsp <-
@@ -157,9 +156,8 @@ callbackQueries =
   , ("repeat5", callbackQueryHandler 5)
   ]
 
-getTelegramToken :: C.Config -> IO T.Text
-getTelegramToken conf = do
-  token <- C.lookup conf "telegram.botToken"
-  case token of
-    Nothing -> throw $ NoTokenException "Telegram"
-    Just token -> pure ("bot" <> token)
+telegramEnv :: IO BotEnv
+telegramEnv = do
+    conf <- loadConfig
+    tgToken <- getConf conf "telegram.token"
+    pure BotEnv {beToken = tgToken, beChannel = Nothing}
